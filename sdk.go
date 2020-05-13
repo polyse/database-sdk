@@ -17,7 +17,7 @@ type Source struct {
 type RawData struct {
 	Source
 	Url  string `json:"url"`
-	Data string `json:"Data"`
+	Data string `json:"data"`
 }
 
 type Documents struct {
@@ -48,9 +48,8 @@ func (d *DBClient) SaveData(collectionName string, data Documents) error {
 		return err
 	} else if resp.StatusCode == http.StatusOK {
 		return nil
-	} else {
-		var answer string
-		_ = json.NewDecoder(resp.Body).Decode(&answer)
-		return errors.New(answer)
 	}
+	var answer string
+	_ = json.NewDecoder(resp.Body).Decode(&answer)
+	return errors.New(answer)
 }
