@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -19,27 +20,29 @@ type RawData struct {
 	Data string `json:"Data"`
 }
 
-// PolySEDB struct consist payload and collection name
-type PolySEDB struct {
-	Data           []RawData
-	collectionName string
+type Documents struct {
+	Documents []RawData `json:"documents"`
 }
 
-// New return new instance of PolySEDB
-func New(d []RawData, name string) *PolySEDB {
-	return &PolySEDB{
-		Data:           d,
-		collectionName: name,
-	}
+var contentType = "application/json"
+
+// DBClient struct consist payload and collection name
+type DBClient struct {
+	url string
 }
 
-// Add RawData to PolySE Database
-func (p *PolySEDB) Add() error {
-	requestBody, err := json.Marshal(p.Data)
+// NewDBClient return new instance of DBClient
+func NewDBClient(url string) *DBClient {
+	return &DBClient{url: url}
+}
+
+// SaveData RawData to PolySE Database
+func (d *DBClient) SaveData(collectionName string, data Documents) error {
+	requestBody, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post("/api/"+p.collectionName+"/documents", "application/json", bytes.NewBuffer(requestBody))
+	resp, err := http.Post(fmt.Sprintf("%s/api/%s/documents", d.url, collectionName), contentType, bytes.NewBuffer(requestBody))
 	defer resp.Body.Close()
 	if err != nil {
 		return err
