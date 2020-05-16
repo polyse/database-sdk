@@ -52,7 +52,6 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (*Documents, 
 	if err != nil {
 		return nil, err
 	}
-
 	res := struct {
 		D       Documents `json:"documents"`
 		Message string    `json:"message"`
