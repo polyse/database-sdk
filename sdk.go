@@ -51,7 +51,7 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (Documents, e
 	resp, err := d.c.Post(fmt.Sprintf("%s/api/%s/documents", d.url, collectionName), contentType, bytes.NewBuffer(requestBody))
 	defer resp.Body.Close()
 	if err != nil {
-		return data, err
+		return Documents{}, err
 	}
 
 	res := struct {
@@ -60,7 +60,7 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (Documents, e
 	}{}
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
-		return data, err
+		return Documents{}, fmt.Errorf("Unexpected answer: %w", err)
 	}
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
 		return res.D, nil
