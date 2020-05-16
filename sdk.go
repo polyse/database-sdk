@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -30,29 +29,31 @@ var contentType = "application/json"
 // DBClient struct consist payload and collection name
 type DBClient struct {
 	url string
+	c   *http.Client
 }
 
 // NewDBClient return new instance of DBClient
 func NewDBClient(url string) *DBClient {
-	return &DBClient{url: url}
+	return &DBClient{
+		url: url,
+		c: &http.Client{
+			Timeout: 20 * time.Second,
+		},
+	}
 }
 
 // SaveData RawData to PolySE Database
 func (d *DBClient) SaveData(collectionName string, data Documents) (Documents, error) {
 	requestBody, err := json.Marshal(data)
 	if err != nil {
-		return data, err
+		return Documents{}, fmt.Errorf("Can't perform request: %w", err)
 	}
-	client := http.Client{
-		Timeout: 20 * time.Second,
-	}
-	resp, err := client.Post(fmt.Sprintf("%s/api/%s/documents", d.url, collectionName), contentType, bytes.NewBuffer(requestBody))
+	resp, err := d.c.Post(fmt.Sprintf("%s/api/%s/documents", d.url, collectionName), contentType, bytes.NewBuffer(requestBody))
 	defer resp.Body.Close()
 	if err != nil {
 		return data, err
-	} else if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return data, errors.New(http.StatusText(resp.StatusCode))
 	}
+
 	res := struct {
 		D       Documents `json:"documents"`
 		Message string    `json:"message"`
@@ -61,11 +62,12 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (Documents, e
 	if err != nil {
 		return data, err
 	}
-	if res.Message != "" {
-		if strings.Contains(res.Message, "200") == true || strings.Contains(res.Message, "201") == true {
-			return res.D, nil
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+		return res.D, nil
+	} else {
+		if res.Message != "" {
+			return res.D, errors.New(res.Message)
 		}
-		return res.D, errors.New(res.Message)
+		return Documents{}, fmt.Errorf("Unexpected answer: %w", err)
 	}
-	return res.D, errors.New("Unexpected answer")
 }
