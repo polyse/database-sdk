@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-// Временно
 type Source struct {
 	Date  time.Time `json:"date"`
 	Title string    `json:"title"`
@@ -43,15 +42,15 @@ func NewDBClient(url string) *DBClient {
 }
 
 // SaveData RawData to PolySE Database
-func (d *DBClient) SaveData(collectionName string, data Documents) (Documents, error) {
+func (d *DBClient) SaveData(collectionName string, data Documents) (*Documents, error) {
 	requestBody, err := json.Marshal(data)
 	if err != nil {
-		return Documents{}, fmt.Errorf("Can't perform request: %w", err)
+		return nil, fmt.Errorf("Can't perform request: %w", err)
 	}
 	resp, err := d.c.Post(fmt.Sprintf("%s/api/%s/documents", d.url, collectionName), contentType, bytes.NewBuffer(requestBody))
 	defer resp.Body.Close()
 	if err != nil {
-		return Documents{}, err
+		return nil, err
 	}
 
 	res := struct {
@@ -60,14 +59,13 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (Documents, e
 	}{}
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
-		return Documents{}, fmt.Errorf("Unexpected answer: %w", err)
+		return nil, fmt.Errorf("Unexpected answer: %w", err)
 	}
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
-		return res.D, nil
-	} else {
-		if res.Message != "" {
-			return res.D, errors.New(res.Message)
-		}
-		return Documents{}, fmt.Errorf("Unexpected answer: %w", err)
+		return &res.D, nil
 	}
+	if res.Message != "" {
+		return &res.D, errors.New(res.Message)
+	}
+	return nil, fmt.Errorf("Unexpected answer: %w", err)
 }
