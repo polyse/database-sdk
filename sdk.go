@@ -3,16 +3,20 @@ package database_sdk
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"time"
 )
+
+var contentType = "application/json"
+var apiPath = "%s/api/%s/documents"
 
 type Source struct {
 	Date  time.Time `json:"date"`
 	Title string    `json:"title"`
 }
+
 type RawData struct {
 	Source
 	Url  string `json:"url"`
@@ -23,7 +27,10 @@ type Documents struct {
 	Documents []RawData `json:"documents"`
 }
 
-var contentType = "application/json"
+type ResponseData struct {
+	Source
+	Url string `json:"url"`
+}
 
 // DBClient struct consist payload and collection name
 type DBClient struct {
@@ -45,26 +52,43 @@ func NewDBClient(url string) *DBClient {
 func (d *DBClient) SaveData(collectionName string, data Documents) (*Documents, error) {
 	requestBody, err := json.Marshal(data)
 	if err != nil {
-		return nil, fmt.Errorf("Can't perform request: %w", err)
+		return nil, fmt.Errorf("can't perform request: %w", err)
 	}
-	resp, err := d.c.Post(fmt.Sprintf("%s/api/%s/documents", d.url, collectionName), contentType, bytes.NewBuffer(requestBody))
-	defer resp.Body.Close()
+	resp, err := d.c.Post(fmt.Sprintf(apiPath, d.url, collectionName), contentType, bytes.NewBuffer(requestBody))
 	if err != nil {
 		return nil, err
 	}
-	res := struct {
-		D       Documents `json:"documents"`
-		Message string    `json:"message"`
-	}{}
+	defer func() {
+		err = resp.Body.Close()
+	}()
+	var res Documents
 	err = json.NewDecoder(resp.Body).Decode(&res)
-	if err != nil {
-		return nil, fmt.Errorf("Unexpected answer: %w", err)
-	}
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
-		return &res.D, nil
+		return &res, nil
 	}
-	if res.Message != "" {
-		return &res.D, errors.New(res.Message)
+	if raw, err := ioutil.ReadAll(resp.Body); err != nil {
+		return nil, err
+	} else {
+		return nil, fmt.Errorf("unexpected answer: %w, body: %s, code %d", err, raw, resp.StatusCode)
 	}
-	return nil, fmt.Errorf("Unexpected answer: %w", err)
+}
+
+// GetData returns data from PolySE Database
+func (d *DBClient) GetData(collectionName, searchPhrase string, limit, offset int) ([]ResponseData, error) {
+	response, err := d.c.Get(
+		fmt.Sprintf(apiPath+"?q=%s&limit=%d&offset=%d", d.url, collectionName, searchPhrase, limit, offset),
+	)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := ioutil.ReadAll(response.Body)
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code %d, responce body: %s", response.StatusCode, string(raw))
+	}
+	var result []ResponseData
+	err = json.Unmarshal(raw, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
