@@ -69,8 +69,20 @@ func (s *ServerTestSuite) SetupSuite() {
 		panic("method not allowed")
 
 	})
+	r.HandleFunc("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			if _, err := fmt.Fprint(w, "OK"); err != nil {
+				panic(err)
+			}
+			return
+		}
+		panic("method not allowed")
+	})
 	s.server = httptest.NewServer(r)
-	s.client = NewDBClient(s.server.URL)
+	s.client, err = NewDBClient(s.server.URL)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (s *ServerTestSuite) TestClient_Get() {
