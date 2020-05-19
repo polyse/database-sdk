@@ -63,6 +63,9 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (*Documents, 
 	}()
 	var res Documents
 	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		return nil, err
+	}
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
 		return &res, nil
 	}
