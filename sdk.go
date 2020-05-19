@@ -3,14 +3,17 @@ package database_sdk
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 )
 
+var healthcheckPath = "%s/healthcheck"
 var contentType = "application/json"
 var apiPath = "%s/api/%s/documents"
+var DatabasePingErr = errors.New("can not ping database ")
 
 type Source struct {
 	Date  time.Time `json:"date"`
@@ -39,13 +42,21 @@ type DBClient struct {
 }
 
 // NewDBClient return new instance of DBClient
-func NewDBClient(url string) *DBClient {
-	return &DBClient{
+func NewDBClient(url string) (*DBClient, error) {
+	db := &DBClient{
 		url: url,
 		c: &http.Client{
 			Timeout: 20 * time.Second,
 		},
 	}
+	resp, err := db.c.Get(fmt.Sprintf(healthcheckPath, url))
+	if err != nil {
+		return nil, DatabasePingErr
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, DatabasePingErr
+	}
+	return db, nil
 }
 
 // SaveData RawData to PolySE Database
