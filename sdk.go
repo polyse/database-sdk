@@ -13,7 +13,7 @@ import (
 var healthcheckPath = "%s/healthcheck"
 var contentType = "application/json"
 var apiPath = "%s/api/%s/documents"
-var DatabasePingErr = errors.New("can not ping database ")
+var DatabasePingErr = errors.New("can not ping database")
 
 type Source struct {
 	Date  time.Time `json:"date"`
@@ -39,6 +39,15 @@ type ResponseData struct {
 type DBClient struct {
 	url string
 	c   *http.Client
+}
+
+type CustomError struct {
+	error
+	code int
+}
+
+func wrap(msg string, code int, err error) error {
+	return CustomError{error: fmt.Errorf("unexpected err: %w, body %s", err, msg), code: code}
 }
 
 // NewDBClient return new instance of DBClient
@@ -83,7 +92,7 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (*Documents, 
 	if raw, err := ioutil.ReadAll(resp.Body); err != nil {
 		return nil, err
 	} else {
-		return nil, fmt.Errorf("unexpected answer: %w, body: %s, code %d", err, raw, resp.StatusCode)
+		return nil, wrap(string(raw), resp.StatusCode, err)
 	}
 }
 
@@ -97,7 +106,7 @@ func (d *DBClient) GetData(collectionName, searchPhrase string, limit, offset in
 	}
 	raw, err := ioutil.ReadAll(response.Body)
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code %d, responce body: %s", response.StatusCode, string(raw))
+		return nil, wrap(string(raw), response.StatusCode, err)
 	}
 	var result []ResponseData
 	err = json.Unmarshal(raw, &result)
