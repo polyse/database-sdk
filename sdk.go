@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -74,7 +75,15 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (*Documents, 
 	if err != nil {
 		return nil, fmt.Errorf("can't perform request: %w", err)
 	}
-	resp, err := d.c.Post(fmt.Sprintf(apiPath, d.url, collectionName), contentType, bytes.NewBuffer(requestBody))
+	resp, err := d.c.Post(
+		fmt.Sprintf(
+			apiPath,
+			d.url,
+			url.PathEscape(collectionName),
+		),
+		contentType,
+		bytes.NewBuffer(requestBody),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +108,14 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (*Documents, 
 // GetData returns data from PolySE Database
 func (d *DBClient) GetData(collectionName, searchPhrase string, limit, offset int) ([]ResponseData, error) {
 	response, err := d.c.Get(
-		fmt.Sprintf(apiPath+"?q=%s&limit=%d&offset=%d", d.url, collectionName, searchPhrase, limit, offset),
+		fmt.Sprintf(
+			apiPath+"?q=%s&limit=%d&offset=%d",
+			d.url,
+			url.PathEscape(collectionName),
+			url.PathEscape(searchPhrase),
+			limit,
+			offset,
+		),
 	)
 	if err != nil {
 		return nil, err

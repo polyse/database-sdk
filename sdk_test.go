@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,6 +52,11 @@ func (s *ServerTestSuite) SetupSuite() {
 	r := http.NewServeMux()
 	r.HandleFunc("/api/default/documents", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
+
+			if strings.Contains(r.FormValue("q"), "server error") {
+				http.Error(w, "test crash", http.StatusInternalServerError)
+				return
+			}
 			if _, err := fmt.Fprint(w, string(b)); err != nil {
 				panic(err)
 			}
@@ -86,7 +92,7 @@ func (s *ServerTestSuite) SetupSuite() {
 }
 
 func (s *ServerTestSuite) TestClient_Get() {
-	d, err := s.client.GetData("default", "data1", 10, 0)
+	d, err := s.client.GetData("default", "data1 data2", 10, 0)
 	s.NoError(err)
 	s.ElementsMatch(s.res, d)
 }
@@ -95,6 +101,12 @@ func (s *ServerTestSuite) TestClient_Post() {
 	d, err := s.client.SaveData("default", Documents{Documents: s.req})
 	s.NoError(err)
 	s.ElementsMatch(s.req, d.Documents)
+}
+
+func (s *ServerTestSuite) TestClient_Error() {
+	d, err := s.client.GetData("default", "server error", 10, 0)
+	s.Error(err)
+	fmt.Print(d)
 }
 
 func (s *ServerTestSuite) TearDownSuite() {
