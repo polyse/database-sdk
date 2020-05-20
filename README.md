@@ -2,12 +2,20 @@
 
 Simple sdk to add Documents in POLYSE database.
 
-#### Usage :
+### Installing
 
-1) Start POLYSE database on _localhost:8080_
-2) Create collections, for example _news_
+Install PolySE Database SDK by runnig:
+
+```bash
+go get github.com/polyse/database-sdk
+```
+
+### Usage 
+
+1) Import package `import sdk "github.com/polyse/database-sdk"` 
+2) Start [polySE database](https://github.com/polyse/database) on _<example_host>:<example_port>_
 3) Create new client like :
-    > newclient := database_sdk.NewDBClient("localhost:8080")
-4) Send data to save your new documents like :
-    > docs, err := newclient.SaveData("news", []Documents{...})
-5) Handle error.
+  ``` go
+     newclient, err := sdk.NewDBClient("<example_host>:<example_port>")
+  ```
+5) Use client end enjoy:).
