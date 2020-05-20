@@ -14,6 +14,7 @@ import (
 var healthcheckPath = "%s/healthcheck"
 var contentType = "application/json"
 var apiPath = "%s/api/%s/documents"
+var queryParams = "?q=%s&limit=%d&offset=%d"
 var DatabasePingErr = errors.New("can not ping database")
 
 type Source struct {
@@ -42,9 +43,14 @@ type DBClient struct {
 	c   *http.Client
 }
 
+// CustomError wrap error with error code from database
 type CustomError struct {
 	error
 	code int
+}
+
+type simpleMessage struct {
+	Msg string `json:"msg, message" `
 }
 
 func wrap(msg string, code int, err error) error {
@@ -98,18 +104,23 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (*Documents, 
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
 		return &res, nil
 	}
-	if raw, err := ioutil.ReadAll(resp.Body); err != nil {
-		return nil, err
-	} else {
-		return nil, wrap(string(raw), resp.StatusCode, err)
+	var sm simpleMessage
+	err = json.NewDecoder(resp.Body).Decode(&sm)
+	if err != nil {
+		if raw, err := ioutil.ReadAll(resp.Body); err != nil {
+			return nil, err
+		} else {
+			return nil, wrap(string(raw), resp.StatusCode, err)
+		}
 	}
+	return nil, wrap(sm.Msg, resp.StatusCode, err)
 }
 
 // GetData returns data from PolySE Database
 func (d *DBClient) GetData(collectionName, searchPhrase string, limit, offset int) ([]ResponseData, error) {
 	response, err := d.c.Get(
 		fmt.Sprintf(
-			apiPath+"?q=%s&limit=%d&offset=%d",
+			apiPath+queryParams,
 			d.url,
 			url.PathEscape(collectionName),
 			url.PathEscape(searchPhrase),
@@ -121,8 +132,16 @@ func (d *DBClient) GetData(collectionName, searchPhrase string, limit, offset in
 		return nil, err
 	}
 	raw, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
 	if response.StatusCode != http.StatusOK {
-		return nil, wrap(string(raw), response.StatusCode, err)
+		var sm simpleMessage
+		err := json.Unmarshal(raw, &sm)
+		if err != nil {
+			return nil, wrap(string(raw), response.StatusCode, err)
+		}
+		return nil, wrap(sm.Msg, response.StatusCode, err)
 	}
 	var result []ResponseData
 	err = json.Unmarshal(raw, &result)
