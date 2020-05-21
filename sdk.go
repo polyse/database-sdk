@@ -50,7 +50,7 @@ type CustomError struct {
 }
 
 type simpleMessage struct {
-	Msg string `json:"msg, message" `
+	Msg string `json:"msg,message" `
 }
 
 func wrap(msg string, code int, err error) error {
