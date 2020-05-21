@@ -107,11 +107,11 @@ func (d *DBClient) SaveData(collectionName string, data Documents) (*Documents, 
 	var sm simpleMessage
 	err = json.NewDecoder(resp.Body).Decode(&sm)
 	if err != nil {
-		if raw, err := ioutil.ReadAll(resp.Body); err != nil {
+		raw, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
 			return nil, err
-		} else {
-			return nil, wrap(string(raw), resp.StatusCode, err)
 		}
+		return nil, wrap(string(raw), resp.StatusCode, err)
 	}
 	return nil, wrap(sm.Msg, resp.StatusCode, err)
 }

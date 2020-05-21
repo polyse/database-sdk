@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -19,6 +20,7 @@ type ServerTestSuite struct {
 	client *DBClient
 	res    []ResponseData
 	req    []RawData
+	tLoc   *time.Location
 }
 
 func TestSetupServer(t *testing.T) {
@@ -27,6 +29,7 @@ func TestSetupServer(t *testing.T) {
 
 func (s *ServerTestSuite) SetupSuite() {
 	t := time.Now().Round(1 * time.Nanosecond)
+	s.tLoc = t.Location()
 	s.res = []ResponseData{
 		{
 			Source: Source{
@@ -94,19 +97,30 @@ func (s *ServerTestSuite) SetupSuite() {
 func (s *ServerTestSuite) TestClient_Get() {
 	d, err := s.client.GetData("default", "data1 data2", 10, 0)
 	s.NoError(err)
-	s.ElementsMatch(s.res, d)
+	for i := range d {
+		s.Equal(s.res[i].Url, d[i].Url)
+		s.Equal(s.res[i].Title, d[i].Title)
+		s.Equal(s.res[i].Source.Title, d[i].Source.Title)
+	}
 }
 
 func (s *ServerTestSuite) TestClient_Post() {
 	d, err := s.client.SaveData("default", Documents{Documents: s.req})
 	s.NoError(err)
-	s.ElementsMatch(s.req, d.Documents)
+	tmp := d.Documents
+	for i := range tmp {
+		s.Equal(s.req[i].Url, tmp[i].Url)
+		s.Equal(s.req[i].Data, tmp[i].Data)
+		s.Equal(s.req[i].Data, tmp[i].Data)
+		s.Equal(s.req[i].Title, tmp[i].Title)
+		s.Equal(s.req[i].Source.Title, tmp[i].Source.Title)
+	}
 }
 
 func (s *ServerTestSuite) TestClient_Error() {
-	d, err := s.client.GetData("default", "server error", 10, 0)
+	_, err := s.client.GetData("default", "server error", 10, 0)
 	s.Error(err)
-	fmt.Print(d)
+	s.IsType(err, CustomError{})
 }
 
 func (s *ServerTestSuite) TearDownSuite() {
