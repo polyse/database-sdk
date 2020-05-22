@@ -1,0 +1,9 @@
+FROM golang:1.14 AS builder
+WORKDIR /go/src/github.com/polyse/database
+
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
+COPY . .
+RUN GOOS=linux CGO_ENABLED=0 go test -v ./...
