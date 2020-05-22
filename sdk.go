@@ -15,6 +15,7 @@ var healthcheckPath = "%s/healthcheck"
 var contentType = "application/json"
 var apiPath = "%s/api/%s/documents"
 var queryParams = "?q=%s&limit=%d&offset=%d"
+var collectionsPath = "%s/collections"
 var DatabasePingErr = errors.New("can not ping database")
 
 type Source struct {
@@ -51,6 +52,16 @@ type CustomError struct {
 
 type simpleMessage struct {
 	Msg string `json:"msg"`
+}
+
+type CollectionInfo struct {
+	Name     string   `json:"name"`
+	Metadata Metadata `json:"metadata"`
+}
+
+type Metadata struct {
+	ColFilters []string `json:"col_filters"`
+	Tokenizer  string   `json:"tokenizer"`
 }
 
 func wrap(msg string, code int, err error) error {
@@ -144,6 +155,54 @@ func (d *DBClient) GetData(collectionName, searchPhrase string, limit, offset in
 		return nil, wrap(sm.Msg, response.StatusCode, err)
 	}
 	var result []ResponseData
+	err = json.Unmarshal(raw, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (d *DBClient) AddCollection(info CollectionInfo) error {
+	rb, err := json.Marshal(info)
+	if err != nil {
+		return err
+	}
+	req, err := d.c.Post(fmt.Sprintf(collectionsPath, d.url), contentType, bytes.NewReader(rb))
+	if err != nil {
+		return err
+	}
+	if req.StatusCode != http.StatusOK {
+		return CustomError{
+			error: fmt.Errorf("can not add new collection with name %s", info.Name),
+			code:  req.StatusCode,
+		}
+	}
+	return nil
+}
+
+func (d *DBClient) GetAllCollections() ([]CollectionInfo, error) {
+	response, err := d.c.Get(
+		fmt.Sprintf(
+			collectionsPath,
+			d.url,
+		),
+	)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != http.StatusOK {
+		var sm simpleMessage
+		err := json.Unmarshal(raw, &sm)
+		if err != nil {
+			return nil, wrap(string(raw), response.StatusCode, err)
+		}
+		return nil, wrap(sm.Msg, response.StatusCode, err)
+	}
+	var result []CollectionInfo
 	err = json.Unmarshal(raw, &result)
 	if err != nil {
 		return nil, err
