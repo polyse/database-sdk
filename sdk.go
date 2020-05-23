@@ -23,7 +23,7 @@ type Source struct {
 }
 
 type RawData struct {
-	Source Source
+	Source Source `json:"source"`
 	Url    string `json:"url"`
 	Data   string `json:"data"`
 }
