@@ -23,9 +23,9 @@ type Source struct {
 }
 
 type RawData struct {
-	Source
-	Url  string `json:"url"`
-	Data string `json:"data"`
+	Source Source
+	Url    string `json:"url"`
+	Data   string `json:"data"`
 }
 
 type Documents struct {
@@ -33,8 +33,8 @@ type Documents struct {
 }
 
 type ResponseData struct {
-	Source
-	Url string `json:"url"`
+	Source Source
+	Url    string `json:"url"`
 }
 
 // DBClient struct consist payload and collection name
