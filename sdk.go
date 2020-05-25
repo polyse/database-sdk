@@ -62,7 +62,7 @@ func NewDBClient(url string) (*DBClient, error) {
 	db := &DBClient{
 		url: url,
 		c: &http.Client{
-			Timeout: 20 * time.Second,
+			Timeout: 60 * time.Second,
 		},
 	}
 	resp, err := db.c.Get(fmt.Sprintf(healthcheckPath, url))
